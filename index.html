@@ -177,6 +177,11 @@
     	maxZoom: 20
     });
 
+    // Define empty layer groups
+    const buildingsGroup = L.layerGroup().addTo(map);
+    const photosGroup = L.layerGroup().addTo(map);
+    const protestsGroup = L.layerGroup();
+
     // use jquery to load GeoJSON data
     $.when(
       $.getJSON("data/blds.json"),
@@ -185,6 +190,10 @@
     // when the files are done loading,
     // identify them with names and process them through a function
     ).done(function(blds, pics, demos) {
+
+      // define the value in the slider when the map loads
+      let currentYear = $('.slider').val();
+
       // add the buildings to the map
       const buildings = L.geoJson(blds, {
         // style the layer
@@ -244,10 +253,20 @@
 
           if (popupContent !== '') {
             layer.bindPopup(popupContent);
-          }
+          };
+
+          const startYear = new Date(feature.properties.STDATE).getFullYear();
+          const endYear = new Date(feature.properties.ENDATE).getFullYear();
+
+          if (startYear <= currentYear && currentYear <= endYear) {
+            // add the layer to the layer group
+            buildingsGroup.addLayer(layer);
+          } else {
+            buildingsGroup.removeLayer(layer);
+          };
 
         }
-      }).addTo(map);
+      });
       // add the photo points to the map
       const photos = L.geoJson(pics, {
         // add points as the custom camera icon instead of the default leaflet markers
@@ -286,8 +305,18 @@
           layer.bindPopup('<b>' + feature.properties.Name_1 + '</b><br>' + '<img src="' + feature.properties.URL + '/datastream/TN/view"/>' + '<br><a href="' + feature.properties.URL + '"  target="_blank">Click here for full-size image</a>', {
             maxWidth: 200
           });
+
+          const startYear = new Date(feature.properties.STARTDATE).getFullYear();
+          const endYear = new Date(feature.properties.ENDATE).getFullYear();
+
+          if (startYear+1 == currentYear) {
+            // add the layer to the layer group
+            photosGroup.addLayer(layer);
+          } else {
+            photosGroup.removeLayer(layer);
+          };
         }
-      }).addTo(map);
+      });
       // add the protest points to the map
       const protests = L.geoJson(demos, {
         // add points as the custom camera icon instead of the default leaflet markers
@@ -327,9 +356,6 @@
         }
       }).addTo(map);
 
-      // define the value in the slider when the map loads
-      let currentYear = $('.slider').val();
-
       // call functions defined below
       sequenceUI(buildings, photos, protests); // calls the time slider and sends the layers to it
       createTemporalLegend(currentYear); // calls the createTemporalLegend function
@@ -340,8 +366,8 @@
       };
 
       const overlays = {
-        "Buildings":buildings,
-        "Photos":photos,
+        "Buildings":buildingsGroup,
+        "Photos":photosGroup,
         "Protests":protests
       };
 
@@ -349,47 +375,57 @@
         collapsed:false,
       }).addTo(map);
 
-      // call the UI slider with a function called "sequenceUI"
-      function sequenceUI(buildings, photos, protests) { // feed it the data
+    });
 
-        // use the jQuery ajax method to get the slider element
-        $('.slider')
-          .on('input change', function() { // when the input changes...
-            let currentYear = $(this).val(); // identify the year selected with "currentYear"
-            createTemporalLegend(currentYear); // call the createTemporalLegend function
+    // call the UI slider with a function called "sequenceUI"
+    function sequenceUI(buildings, photos, protests) { // feed it the data
+
+      // use the jQuery ajax method to get the slider element
+      $('.slider')
+        .on('input change', function() { // when the input changes...
+          let currentYear = $(this).val(); // identify the year selected with "currentYear"
+          createTemporalLegend(currentYear); // call the createTemporalLegend function
+
+          // for each layer in the layer groups...
+			    buildings.eachLayer(function(layer) {
+
+            const startYear = new Date(layer.feature.properties.STDATE).getFullYear();
+            const endYear = new Date(layer.feature.properties.ENDATE).getFullYear();
+
+            if (startYear <= currentYear && currentYear <= endYear) {
+              // add the layer to the layer group
+              buildingsGroup.addLayer(layer);
+            } else {
+              buildingsGroup.removeLayer(layer);
+            };
+
           });
 
-      }; // End sequenceUI function
+          // for each layer in the layer groups...
+			    photos.eachLayer(function(layer) {
 
-      // Add a temporal legend in sync with the UI slider
-      function createTemporalLegend(currentYear) { // feed it the selected year
-/*
-        // define the temporal legend with a Leaflet control
-        const temporalLegend = L.control({
-          position: 'bottomleft' // place the temporal legend at bottom left corner
+            const startYear = new Date(layer.feature.properties.STARTDATE).getFullYear();
+            const endYear = new Date(layer.feature.properties.ENDATE).getFullYear();
+
+            if (startYear+1 == currentYear) {
+              // add the layer to the layer group
+              photosGroup.addLayer(layer);
+            } else {
+              photosGroup.removeLayer(layer);
+            };
+
+          });
+
         });
 
-        // when added to the map
-        temporalLegend.onAdd = function(map) {
+    }; // End sequenceUI function
 
-          const div = L.DomUtil.get("temporal"); // get the div
+    // Add a temporal legend in sync with the UI slider
+    function createTemporalLegend(currentYear) { // feed it the selected year
 
-          // disable the mouse events
-          L.DomEvent.addListener(div, 'mousedown', function(e) {
-            L.DomEvent.stopPropagation(e);
-          });
+      $('#temporal span').html(currentYear); // change grade value to that currently selected by UI slider
 
-          return div; // return the div from the function
-
-        }
-*/
-        $('#temporal span').html(currentYear); // change grade value to that currently selected by UI slider
-
-        //temporalLegend.addTo(map); // add the temporal legend to the map
-
-      }; // End createTemporalLegend function
-
-    });
+    }; // End createTemporalLegend function
 
   </script>
 </body>
