@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <!-- Give the page a title -->
+  <title>Uptight & Laid-Back</title>
+  <!-- Add a link to the Leaflet CSS library so you can reference it for styling your map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Monoton&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bungee+Shade&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@1,300&display=swap" rel="stylesheet">
+  <!-- All the CSS code goes inside the style tags below -->
+  <style>
+    /* style the body */
+    body {
+      margin: 0px;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* style the map */
+    #map {
+      position: absolute;
+      width: 100%;
+      top: 60px;
+      bottom: 0;
+    }
+
+    /* Add banner to header background */
+    header {
+      background-image: url('images/60s_wallpaper.jpg');
+      position: fixed;
+      width: 100%;
+      height: 60px;
+      background-color: rgba(128, 128, 0, 0.4);
+      box-shadow: 0px 5px 5px black;
+      z-index: 700;
+      /*background-repeat: no-repeat;*/
+      background-size: auto 150px;
+    }
+
+    /* Set logo styles */
+    div.picture1 {
+       height:100%; /*height of your image*/
+       background-image:url('images/topslab_map.png');
+       background-repeat: no-repeat;
+       background-size: auto 60px;
+       margin:0; /* If you want no margin */
+       padding:0; /*if your want to padding */
+    }
+
+    /* Set time slider styles */
+    #slider {
+      position: absolute;
+      height: 30px;
+      top: 10px;
+      right: 10px;
+      z-index: 800;
+      background-color: rgba(245,245,220, 0.5);
+      border-radius: 3px;
+      box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Set temporal legend styles */
+    #temporal {
+      height: 30px;
+      width: 56px;
+      background-color: rgba(245,245,220, 0.5);
+      border-radius: 3px;
+      box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.2);
+      position: absolute;
+      top: 10px;
+      right: 185px;
+      z-index: 800;
+    }
+
+    /* Set the styles for the text span in the temporal legend */
+    #temporal span {
+      /*font-family: 'Michroma', sans-serif;
+      font-family: 'Monoton', cursive;
+      font-family: 'Bungee Shade', cursive;*/
+      font-family: 'Lato', sans-serif;
+      font-weight: 300;
+      font-style: italic;
+      /*font-weight: bold;*/
+      position: inherit;
+      font-size: 20px;
+      color: rgba(0, 0, 0, 1.0);
+      top: 1px;
+      left: 4px;
+    }
+
+    .leaflet-control-layers-expanded {
+      background: linear-gradient(to right, rgba(245,245,220, 0.75), rgba(245,245,220, 0.75)), url('images/60s_wallpaper.jpg');
+      background-size: auto 150px;
+    }
+/*
+    .leaflet-control-layers-expanded::before {
+      content: "";
+      background-color: rgba(245,245,220, 0.75);
+      background-size: cover;
+      position: absolute;
+      top: 0px;
+      right: 0px;
+      bottom: 0px;
+      left: 0px;
+    }
+*/
+    .leaflet-control-zoom a {
+      background: linear-gradient(to right, rgba(245,245,220, 0.75), rgba(245,245,220, 0.75)), url('images/60s_wallpaper.jpg');
+      background-size: auto 150px;
+    }
+
+  </style>
+</head>
+
+<body>
+  <!-- Header content -->
+  <header>
+    <!-- logo -->
+    <div id="logo" class="picture1">&nbsp;</div>
+    <!-- ui slider -->
+    <div id="slider" class="leaflet-control">
+      <!-- Use the first and last year of the time data as the min and max. Set the initial value as the first year. Set the steps at one year. -->
+      <input type="range" min="1958" max="1975" value="1958" step="1" class="slider" />
+    </div>
+    <!-- temporal legend -->
+    <div id='temporal'>
+      <span></span>
+    </div>
+  </header>
+  <!-- the map -->
+  <div id="map"></div>
+  <!-- Add a link to the Leaflet JavaScript library so you can reference it for building your map -->
+  <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
+  <!-- Add a link to the jQuery JavaScript library so you can leverage ajax methods to load your data -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <!-- All JavaScript goes inside the script tags below -->
+  <script>
+    // define map options
+    const mapOptions = {
+      center: [41.662, -91.538], // center the map on the coordinates for Iowa City
+      zoom: 16, // set the initial zoom
+      minZoom: 13,
+      maxZoom: 20
+    };
+
+    // define the map with the options above
+    const map = L.map("map", mapOptions);
+
+    // add initial tiles to the map
+    const initTiles = L.tileLayer('./tiles/initial/{z}/{x}/{y}.png', {
+      minNativeZoom: 15,
+      maxNativeZoom: 18,
+      minZoom: 13,
+      maxZoom: 20
+    }).addTo(map);
+
+    const CartoDB_Voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    	subdomains: 'abcd',
+    	maxZoom: 20
+    });
+
+    // use jquery to load GeoJSON data
+    $.when(
+      $.getJSON("data/blds.json"),
+      $.getJSON("data/pics60.json"),
+      $.getJSON("data/protests.json")
+    // when the files are done loading,
+    // identify them with names and process them through a function
+    ).done(function(blds, pics, demos) {
+      // add the buildings to the map
+      const buildings = L.geoJson(blds, {
+        // style the layer
+        style: function(feature) {
+          if (feature.properties.Name !== " ") {
+            return {
+              fillColor: '#ff8c84',
+              fillOpacity: 1.0,
+              color: 'black',
+              weight: 0.5 // give the outline a weight
+            }
+          } else {
+            return {
+              fillColor: 'grey',
+              fillOpacity: 1.0,
+              color: 'black',
+              weight: 0.5 // give the outline a weight
+            }
+          }
+        },
+        // iterate through each feature
+        onEachFeature: function(feature, layer) {
+          // on mouseover...
+          layer.on("mouseover", function() {
+            // reset the layer's style
+            layer.setStyle({
+              fillOpacity: 0.5,
+              color: 'black',
+              weight: 0.75 // give the outline a weight
+            })
+          });
+          // on mouseout...
+          layer.on("mouseout", function() {
+            // reset the layer's style
+            layer.setStyle({
+              fillOpacity: 1.0,
+              color: 'black',
+              weight: 0.5 // give the outline a weight
+            })
+          });
+
+          const bldgName = (feature.properties.Name !== " ") ? feature.properties.Name : 'Building';
+          const bldgYear = (new Date(feature.properties.STDATE).getFullYear() !== "") ? new Date(feature.properties.STDATE).getFullYear() : "";
+          const bldgNameUrl = (feature.properties.Name !== " ") ? '<a href="https://digital.lib.uiowa.edu/islandora/search/' + feature.properties.Name.replace(/ /g, '%20') + '?type=dismax&islandora_solr_search_navigation=0&f[0]=mods_subject_temporal_ms%3A%221960\-1970%22"  target="_blank">Search IDL for 1960s Era Connections</a>' : "";
+
+          let popupContent;
+
+          if (bldgName !== 'Building' && bldgYear !== "") {
+            popupContent = '<b>' + bldgName + '</b><br>' + bldgYear + '<br>' + bldgNameUrl;
+          } if (bldgName !== 'Building' && bldgYear == "") {
+            popupContent = '<b>' + bldgName + '</b><br>' + bldgNameUrl;
+          } if (bldgName == 'Building' && bldgYear == "") {
+            popupContent = '';
+          } if (bldgName == 'Building' && bldgYear !== "") {
+            popupContent = '';
+          }
+
+          if (popupContent !== '') {
+            layer.bindPopup(popupContent);
+          }
+
+        }
+      }).addTo(map);
+      // add the photo points to the map
+      const photos = L.geoJson(pics, {
+        // add points as the custom camera icon instead of the default leaflet markers
+        pointToLayer: function createCustomIcon (feature, latlng) {
+          let myIcon = L.icon({
+            iconUrl: 'icons/camera_icon.png',
+            iconSize:     [30, 30], // width and height of the image in pixels
+            iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
+            popupAnchor:  [0, 0] // point from which the popup should open relative to the iconAnchor
+          })
+          return L.marker(latlng, { icon: myIcon })
+        },
+        // iterate through each feature
+        onEachFeature: function(feature, layer) {
+          // on mouseover...
+          layer.on("mouseover", function(e) {
+            // reset the layer's style
+            e.target.setIcon(new L.icon({
+              iconUrl: 'icons/camera_icon.png',
+              iconSize:     [35, 35], // width and height of the image in pixels
+              iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
+              popupAnchor:  [0, 0] // point from which the popup should open relative to the iconAnchor
+            }));
+          });
+          // on mouseout...
+          layer.on("mouseout", function(e) {
+            // reset the layer's style
+            e.target.setIcon(new L.icon({
+              iconUrl: 'icons/camera_icon.png',
+              iconSize:     [30, 30], // width and height of the image in pixels
+              iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
+              popupAnchor:  [0, 0] // point from which the popup should open relative to the iconAnchor
+            }));
+          });
+          // bind a popup
+          layer.bindPopup('<b>' + feature.properties.Name_1 + '</b><br>' + '<img src="' + feature.properties.URL + '/datastream/TN/view"/>' + '<br><a href="' + feature.properties.URL + '"  target="_blank">Click here for full-size image</a>', {
+            maxWidth: 200
+          });
+        }
+      }).addTo(map);
+      // add the protest points to the map
+      const protests = L.geoJson(demos, {
+        // add points as the custom camera icon instead of the default leaflet markers
+        pointToLayer: function createCustomIcon (feature, latlng) {
+          let myIcon = L.icon({
+            iconUrl: 'icons/protests_icon.png',
+            iconSize:     [35, 35], // width and height of the image in pixels
+            iconAnchor:   [18, 18], // point of the icon which will correspond to marker's location
+            popupAnchor:  [0, 0] // point from which the popup should open relative to the iconAnchor
+          })
+          return L.marker(latlng, { icon: myIcon })
+        },
+        // iterate through each feature
+        onEachFeature: function(feature, layer) {
+          // on mouseover...
+          layer.on("mouseover", function(e) {
+            // reset the layer's style
+            e.target.setIcon(new L.icon({
+              iconUrl: 'icons/protests_icon.png',
+              iconSize:     [40, 40], // width and height of the image in pixels
+              iconAnchor:   [18, 18], // point of the icon which will correspond to marker's location
+              popupAnchor:  [0, 0] // point from which the popup should open relative to the iconAnchor
+            }));
+          });
+          // on mouseout...
+          layer.on("mouseout", function(e) {
+            // reset the layer's style
+            e.target.setIcon(new L.icon({
+              iconUrl: 'icons/protests_icon.png',
+              iconSize:     [35, 35], // width and height of the image in pixels
+              iconAnchor:   [18, 18], // point of the icon which will correspond to marker's location
+              popupAnchor:  [0, 0] // point from which the popup should open relative to the iconAnchor
+            }));
+          });
+          // bind a popup
+          layer.bindPopup(feature.properties.Activity/* + '<br>' + '<a href="' + feature.properties.source + '"  target="_blank">Source</a>'*/);
+        }
+      }).addTo(map);
+
+      // define the value in the slider when the map loads
+      let currentYear = $('.slider').val();
+
+      // call functions defined below
+      sequenceUI(buildings, photos, protests); // calls the time slider and sends the layers to it
+      createTemporalLegend(currentYear); // calls the createTemporalLegend function
+
+      const baseLayers = {
+        "Sixties Base":initTiles,
+        "Contemporary Base":CartoDB_Voyager
+      };
+
+      const overlays = {
+        "Buildings":buildings,
+        "Photos":photos,
+        "Protests":protests
+      };
+
+      L.control.layers(baseLayers, overlays,{
+        collapsed:false,
+      }).addTo(map);
+
+      // call the UI slider with a function called "sequenceUI"
+      function sequenceUI(buildings, photos, protests) { // feed it the data
+
+        // use the jQuery ajax method to get the slider element
+        $('.slider')
+          .on('input change', function() { // when the input changes...
+            let currentYear = $(this).val(); // identify the year selected with "currentYear"
+            createTemporalLegend(currentYear); // call the createTemporalLegend function
+          });
+
+      }; // End sequenceUI function
+
+      // Add a temporal legend in sync with the UI slider
+      function createTemporalLegend(currentYear) { // feed it the selected year
+/*
+        // define the temporal legend with a Leaflet control
+        const temporalLegend = L.control({
+          position: 'bottomleft' // place the temporal legend at bottom left corner
+        });
+
+        // when added to the map
+        temporalLegend.onAdd = function(map) {
+
+          const div = L.DomUtil.get("temporal"); // get the div
+
+          // disable the mouse events
+          L.DomEvent.addListener(div, 'mousedown', function(e) {
+            L.DomEvent.stopPropagation(e);
+          });
+
+          return div; // return the div from the function
+
+        }
+*/
+        $('#temporal span').html(currentYear); // change grade value to that currently selected by UI slider
+
+        //temporalLegend.addTo(map); // add the temporal legend to the map
+
+      }; // End createTemporalLegend function
+
+    });
+
+  </script>
+</body>
+
+</html>
