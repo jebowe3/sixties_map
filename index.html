@@ -171,6 +171,20 @@
       maxZoom: 20
     }).addTo(map);
 
+    const tiles1969 = L.tileLayer('./tiles/campus_1969/{z}/{x}/{y}.png', {
+      minNativeZoom: 15,
+      maxNativeZoom: 18,
+      minZoom: 13,
+      maxZoom: 20
+    });
+
+    const tiles1972 = L.tileLayer('./tiles/campus_1972/{z}/{x}/{y}.png', {
+      minNativeZoom: 15,
+      maxNativeZoom: 18,
+      minZoom: 13,
+      maxZoom: 20
+    });
+
     const CartoDB_Voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     	subdomains: 'abcd',
@@ -180,7 +194,7 @@
     // Define empty layer groups
     const buildingsGroup = L.layerGroup().addTo(map);
     const photosGroup = L.layerGroup().addTo(map);
-    const protestsGroup = L.layerGroup();
+    const protestsGroup = L.layerGroup().addTo(map);
 
     // use jquery to load GeoJSON data
     $.when(
@@ -351,10 +365,28 @@
               popupAnchor:  [0, 0] // point from which the popup should open relative to the iconAnchor
             }));
           });
+
+          let popupContent;
+
+          if (feature.properties.source != "") {
+            popupContent = feature.properties.Activity + '<br>' + '<a href="' + feature.properties.source + '"  target="_blank">Source</a>';
+          } else {
+            popupContent = feature.properties.Activity;
+          }
           // bind a popup
-          layer.bindPopup(feature.properties.Activity/* + '<br>' + '<a href="' + feature.properties.source + '"  target="_blank">Source</a>'*/);
+          layer.bindPopup(popupContent);
+
+          const startYear = new Date(feature.properties.stdate).getFullYear();
+          const endYear = new Date(feature.properties.endate).getFullYear();
+
+          if (startYear+1 == currentYear) {
+            // add the layer to the layer group
+            protestsGroup.addLayer(layer);
+          } else {
+            protestsGroup.removeLayer(layer);
+          };
         }
-      }).addTo(map);
+      });
 
       // call functions defined below
       sequenceUI(buildings, photos, protests); // calls the time slider and sends the layers to it
@@ -362,13 +394,15 @@
 
       const baseLayers = {
         "Sixties Base":initTiles,
+        "Campus Map, 1969":tiles1969,
+        "Campus Map, 1972":tiles1972,
         "Contemporary Base":CartoDB_Voyager
       };
 
       const overlays = {
         "Buildings":buildingsGroup,
         "Photos":photosGroup,
-        "Protests":protests
+        "Protests":protestsGroup
       };
 
       L.control.layers(baseLayers, overlays,{
@@ -412,6 +446,21 @@
               photosGroup.addLayer(layer);
             } else {
               photosGroup.removeLayer(layer);
+            };
+
+          });
+
+          // for each layer in the layer groups...
+			    protests.eachLayer(function(layer) {
+
+            const startYear = new Date(layer.feature.properties.stdate).getFullYear();
+            const endYear = new Date(layer.feature.properties.endate).getFullYear();
+
+            if (startYear+1 == currentYear) {
+              // add the layer to the layer group
+              protestsGroup.addLayer(layer);
+            } else {
+              protestsGroup.removeLayer(layer);
             };
 
           });
